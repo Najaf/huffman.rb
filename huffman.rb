@@ -1,7 +1,3 @@
-
-string = "j'aime aller sur le bord de l'eau les jeudis ou les jours impairs"
-
-
 class Node
   attr_accessor :weight, :symbol, :left, :right, :parent
 
@@ -35,48 +31,22 @@ class Node
     internal? and @parent.nil?
   end
 
-  def to_s(nesting = 1)
-    string = ''
-    nesting.times { string += '-' }
-    string += @symbol.to_s + " (#{@weight})\n"
-    nesting += 1
-    string+= left.to_s(nesting) unless left.nil?
-    string+= right.to_s(nesting) unless right.nil?
-    string
-  end
 end
 
 class NodeQueue
-  attr_accessor :nodes
+  attr_accessor :nodes, :huffman_root
 
-  def weights
-    weights = {}
-    nodes.each do |node|
-      weights[node.symbol] = node.weight
-    end
-    weights
-  end
-
-  def self.from_string(string)
-    queue = self.new
+  def initialize(string)
     frequencies = {}
     string.each_char do |c|
       frequencies[c] ||= 0
       frequencies[c] += 1
     end
-    queue.nodes = []
+    @nodes = []
     frequencies.each do |c, w|
-      queue.nodes << Node.new(:symbol => c, :weight => w)
+      @nodes << Node.new(:symbol => c, :weight => w)
     end
-    queue
-  end
-
-  def merge_nodes(node1, node2)
-    left = node1.weight > node2.weight ? node2 : node1
-    right = left == node1 ? node2 : node1
-    node = Node.new(:weight => left.weight + right.weight, :left => left, :right => right)
-    left.parent = right.parent = node
-    node
+    generate_tree
   end
 
   def generate_tree
@@ -87,15 +57,26 @@ class NodeQueue
       sorted << merge_nodes(to_merge[0], to_merge[1])
       @nodes = sorted
     end
-    HuffmanTree.new(@nodes.first)
+    @huffman_root = @nodes.first
+  end
+
+  def merge_nodes(node1, node2)
+    left = node1.weight > node2.weight ? node2 : node1
+    right = left == node1 ? node2 : node1
+    node = Node.new(:weight => left.weight + right.weight, :left => left, :right => right)
+    left.parent = right.parent = node
+    node
   end
 
 end
 
-class HuffmanTree
-  attr_accessor :root, :lookup
-  def initialize(root)
-    @root = root
+class HuffmanEncoding
+  attr_accessor :root, :lookup, :input, :output
+
+  def initialize(input)
+    @input = input
+    @root = NodeQueue.new(input).huffman_root
+    @output = encode_string(input)
   end
 
   def lookup
@@ -124,6 +105,7 @@ class HuffmanTree
   end
 
   def decode_string(code)
+    code = code.to_s
     string = ''
     subcode = ''
     code.each_char do |bit|
@@ -135,9 +117,19 @@ class HuffmanTree
     end
     string
   end
+
+  def to_s
+    @output
+  end
+
+  def [](char)
+    encode(char)
+  end
+
 end
 
-queue = NodeQueue.from_string(string)
-tree = queue.generate_tree
-puts tree.encode_string(string)
-puts tree.decode_string(tree.encode_string(string))
+class String
+  def huffman
+    @huffman ||= HuffmanEncoding.new(self)
+  end
+end
